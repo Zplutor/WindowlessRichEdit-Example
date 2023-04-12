@@ -4,6 +4,7 @@
 #include <TextServ.h>
 #include <memory>
 #include "my_text_host.h"
+#include "resource.h"
 
 EXTERN_C const IID IID_ITextServices = {
     0x8d33f740,
@@ -52,7 +53,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, char*, int) {
         CW_USEDEFAULT,
         CW_USEDEFAULT,
         nullptr,
-        nullptr,
+        LoadMenu(nullptr, MAKEINTRESOURCE(IDR_MENU)),
         nullptr,
         nullptr
     );
@@ -194,6 +195,10 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
         g_text_host.Release();
         PostQuitMessage(0);
         return 0;
+
+    case WM_COMMAND: {
+        break;
+    }
 
     default:
         break;

@@ -11,12 +11,13 @@ public:
 
     HRESULT QueryInterface(REFIID riid, void** ppvObject) override {
 
-        if (ppvObject == nullptr) {
-            return E_POINTER;
+        if (!ppvObject) {
+            return E_INVALIDARG;
         }
 
         if ((riid == IID_IUnknown) || (riid == IID_ITextHost)) {
             *ppvObject = this;
+            AddRef();
             return S_OK;
         }
 
