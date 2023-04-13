@@ -1,9 +1,12 @@
 ﻿#include <Windows.h>
 #include <atlbase.h>
+#include <atlwin.h>
 #include <Richedit.h>
+#include <richole.h>
 #include <TextServ.h>
 #include <memory>
 #include "my_text_host.h"
+#include "my_ole_object.h"
 #include "resource.h"
 
 EXTERN_C const IID IID_ITextServices = {
@@ -147,7 +150,6 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
     }
 
     case WM_SETCURSOR: {
-
         if (LOWORD(lParam) == HTCLIENT) {
 
             HDC hdc = GetDC(hwnd);
@@ -174,9 +176,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             ReleaseDC(hwnd, hdc);
             return TRUE;
         }
-        else {
-            break;
-        }
+        break;
     }
 
     case WM_MOUSEMOVE:
@@ -197,6 +197,35 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
         return 0;
 
     case WM_COMMAND: {
+        if (LOWORD(wParam) == ID_INSERTOLEOBJECT) {
+
+            CComPtr<IRichEditOle> rich_edit_ole{};
+            g_text_service->TxSendMessage(EM_GETOLEINTERFACE, 0, (LPARAM)&rich_edit_ole, nullptr);
+
+            CComPtr<IOleClientSite> client_site{};
+            rich_edit_ole->GetClientSite(&client_site);
+
+            CComPtr<MyOLEObject> ole_object;
+            ole_object.Attach(new MyOLEObject(g_text_service));
+
+            REOBJECT object_info{};
+            object_info.cbStruct = sizeof(object_info);
+            object_info.clsid = CLSID_MyOLEObject;
+            object_info.poleobj = ole_object;
+            object_info.polesite = client_site;
+            object_info.pstg = nullptr;
+            object_info.dvaspect = DVASPECT_CONTENT;
+            object_info.cp = REO_CP_SELECTION;
+            object_info.dwFlags = REO_BELOWBASELINE | REO_OWNERDRAWSELECT;
+
+            SIZEL size_in_pixels{};
+            size_in_pixels.cx = MyOLEObject::Width;
+            size_in_pixels.cy = MyOLEObject::Height;
+            AtlPixelToHiMetric(&size_in_pixels, &object_info.sizel);
+
+            rich_edit_ole->InsertObject(&object_info);
+            return 0;
+        }
         break;
     }
 

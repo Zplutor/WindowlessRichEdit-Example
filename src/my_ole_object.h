@@ -2,8 +2,17 @@
 
 #include <atlbase.h>
 
+constexpr GUID CLSID_MyOLEObject = { 0xe16f8acd, 0x5b3a, 0x4167, { 0xa4, 0x49, 0xdc, 0x57, 0xd, 0xd4, 0x44, 0x59 } };
+
 class MyOLEObject : public IOleObject, public IViewObject {
 public:
+    static constexpr LONG Width = 40;
+    static constexpr LONG Height = 20;
+
+    explicit MyOLEObject(ITextServices* text_service) : text_service_(text_service) {
+
+    }
+
     HRESULT QueryInterface(REFIID riid, LPVOID* ppvObj) override {
 
         if (!ppvObj) {
@@ -150,9 +159,14 @@ public:
         rect.right = lprcBounds->right;
         rect.bottom = lprcBounds->bottom;
 
-        HBRUSH brush = CreateSolidBrush(RGB(0xfa, 0xb0, 0xcc));
+        auto background_color = IsSelected() ? RGB(0x88, 0xaa, 0xcc) : RGB(0xaa, 0xcc, 0xee);
+        HBRUSH brush = CreateSolidBrush(background_color);
         FillRect(hdcDraw, &rect, brush);
         DeleteObject(brush);
+
+        auto old_background_mode = SetBkMode(hdcDraw, TRANSPARENT);
+        TextOut(hdcDraw, rect.left + 6, rect.top + 2, L"OLE", 3);
+        SetBkMode(hdcDraw, old_background_mode);
         return S_OK;
     }
 
@@ -177,5 +191,45 @@ public:
     }
 
 private:
+    bool IsSelected() const {
+
+        CHARRANGE select_range{};
+        text_service_->TxSendMessage(EM_EXGETSEL, 0, reinterpret_cast<LPARAM>(&select_range), nullptr);
+
+        if (select_range.cpMin == select_range.cpMax) {
+            return false;
+        }
+
+        CComPtr<IRichEditOle> rich_edit_ole{};
+        text_service_->TxSendMessage(EM_GETOLEINTERFACE, 0, (LPARAM)&rich_edit_ole, nullptr);
+
+        auto object_count = rich_edit_ole->GetObjectCount();
+        for (int index = 0; index < object_count; ++index) {
+
+            REOBJECT object_info{};
+            object_info.cbStruct = sizeof(object_info);
+            HRESULT hresult = rich_edit_ole->GetObject(index, &object_info, REO_GETOBJ_POLEOBJ);
+            if (FAILED(hresult)) {
+                continue;
+            }
+
+            //Use CComPtr to auto release the OLE object.
+            CComPtr<IOleObject> ole_object;
+            ole_object.Attach(object_info.poleobj);
+
+            if (ole_object.p == this) {
+
+                if ((select_range.cpMin == 0 && select_range.cpMax == -1) ||
+                    (select_range.cpMin <= object_info.cp && object_info.cp <= select_range.cpMax)) {
+
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     LONG reference_count_{ 1 };
+    ITextServices* text_service_{};
 };
