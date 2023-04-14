@@ -10,13 +10,6 @@
 #include "my_ole_object.h"
 #include "resource.h"
 
-EXTERN_C const IID IID_ITextServices = {
-    0x8d33f740,
-    0xcf58,
-    0x11ce,
-    { 0xa8, 0x9d, 0x00, 0xaa, 0x00, 0x6c, 0xad, 0xc5 }
-};
-
 EXTERN_C const IID IID_ITextHost = {
     0xc5bdd8d0,
     0xd26e,
@@ -85,9 +78,10 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
 
         g_text_host.Attach(new MyTextHost(hwnd));
 
-        HMODULE module_handle = LoadLibrary(L"riched20.dll");
+        //Use the latest RichEdit 4.0
+        HMODULE module_handle = LoadLibrary(L"msftedit.dll");
 
-        typedef HRESULT(_stdcall* CreateTextServicesFunction)(IUnknown*, ITextHost*, IUnknown**);
+        using CreateTextServicesFunction = HRESULT(_stdcall*)(IUnknown*, ITextHost*, IUnknown**);
         CreateTextServicesFunction create_function = reinterpret_cast<CreateTextServicesFunction>(GetProcAddress(module_handle, "CreateTextServices"));
 
         const IID* iid_text_service = reinterpret_cast<IID*>(GetProcAddress(module_handle, "IID_ITextServices"));

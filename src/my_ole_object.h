@@ -7,7 +7,7 @@ constexpr GUID CLSID_MyOLEObject = { 0xe16f8acd, 0x5b3a, 0x4167, { 0xa4, 0x49, 0
 class MyOLEObject : public IOleObject, public IViewObject {
 public:
     static constexpr LONG Width = 40;
-    static constexpr LONG Height = 20;
+    static constexpr LONG Height = 22;
 
     explicit MyOLEObject(ITextServices* text_service) : text_service_(text_service) {
 
@@ -165,7 +165,7 @@ public:
         DeleteObject(brush);
 
         auto old_background_mode = SetBkMode(hdcDraw, TRANSPARENT);
-        TextOut(hdcDraw, rect.left + 6, rect.top + 2, L"OLE", 3);
+        TextOut(hdcDraw, rect.left + 5, rect.top, L"OLE", 3);
         SetBkMode(hdcDraw, old_background_mode);
         return S_OK;
     }

@@ -218,6 +218,8 @@ public:
     }
 
     HRESULT TxGetSelectionBarWidth(LONG* lSelBarWidth) override {
+        //It's necessary to set lSelBarWidth to 0 if the version of RichEdit is less than 4.0,
+        //because they seem to forget to initialize it so that it is a random value.
         *lSelBarWidth = 0;
         return S_OK;
     }
