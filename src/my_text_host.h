@@ -116,11 +116,13 @@ public:
     }
 
     BOOL TxScreenToClient(LPPOINT lppt) override {
-        return FALSE;
+        ScreenToClient(hwnd_, lppt);
+        return TRUE;
     }
 
     BOOL TxClientToScreen(LPPOINT lppt) override {
-        return FALSE;
+        ClientToScreen(hwnd_, lppt);
+        return TRUE;
     }
 
     HRESULT TxActivate(LONG* plOldState) override {

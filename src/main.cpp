@@ -4,6 +4,7 @@
 #include <Richedit.h>
 #include <richole.h>
 #include <TextServ.h>
+#include <tom.h>
 #include <memory>
 #include "my_text_host.h"
 #include "my_ole_object.h"
@@ -21,6 +22,13 @@ EXTERN_C const IID IID_ITextHost = {
     0xd26e,
     0x11ce,
     { 0xa8, 0x9e, 0x00, 0xaa, 0x00, 0x6c, 0xad, 0xc5 }
+};
+
+EXTERN_C const IID IID_ITextDocument = {
+    0x8cc497c0,
+    0xa1df,
+    0x11ce,
+    { 0x80, 0x98, 0x00, 0xaa, 0x00, 0x47, 0xbe, 0x5d }
 };
 
 CComPtr<MyTextHost> g_text_host;
@@ -152,28 +160,47 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
     case WM_SETCURSOR: {
         if (LOWORD(lParam) == HTCLIENT) {
 
-            HDC hdc = GetDC(hwnd);
-
-            POINT position = { 0 };
+            POINT position{};
             GetCursorPos(&position);
-            ScreenToClient(hwnd, &position);
 
-            RECT rect = { 0 };
-            GetClientRect(hwnd, &rect);
+            CComPtr<IRichEditOle> rich_edit_ole;
+            g_text_service->TxSendMessage(EM_GETOLEINTERFACE, 0, (LPARAM)&rich_edit_ole, nullptr);
 
-            g_text_service->OnTxSetCursor(
-                DVASPECT_CONTENT,
-                0,
-                nullptr,
-                nullptr,
-                hdc,
-                nullptr,
-                &rect,
-                position.x,
-                position.y
-            );
+            CComPtr<ITextDocument> text_document;
+            rich_edit_ole->QueryInterface(IID_ITextDocument, reinterpret_cast<void**>(&text_document));
 
-            ReleaseDC(hwnd, hdc);
+            CComPtr<ITextRange> text_range;
+            text_document->RangeFromPoint(position.x, position.y, &text_range);
+
+            CComPtr<IUnknown> ole_object;
+            text_range->GetEmbeddedObject(&ole_object);
+
+            if (ole_object) {
+                SetCursor(LoadCursor(nullptr, IDC_ARROW));
+            }
+            else {
+
+                ScreenToClient(hwnd, &position);
+
+                HDC hdc = GetDC(hwnd);
+
+                RECT rect = { 0 };
+                GetClientRect(hwnd, &rect);
+
+                g_text_service->OnTxSetCursor(
+                    DVASPECT_CONTENT,
+                    0,
+                    nullptr,
+                    nullptr,
+                    hdc,
+                    nullptr,
+                    &rect,
+                    position.x,
+                    position.y
+                );
+
+                ReleaseDC(hwnd, hdc);
+            }
             return TRUE;
         }
         break;
