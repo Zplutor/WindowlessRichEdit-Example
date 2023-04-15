@@ -220,7 +220,7 @@ private:
             if (ole_object.p == this) {
 
                 if ((select_range.cpMin == 0 && select_range.cpMax == -1) ||
-                    (select_range.cpMin <= object_info.cp && object_info.cp <= select_range.cpMax)) {
+                    (select_range.cpMin <= object_info.cp && object_info.cp < select_range.cpMax)) {
 
                     return true;
                 }

@@ -6,6 +6,7 @@
 #include <TextServ.h>
 #include <tom.h>
 #include <memory>
+#include <sstream>
 #include "my_text_host.h"
 #include "my_ole_object.h"
 #include "resource.h"
@@ -28,12 +29,13 @@ CComPtr<MyTextHost> g_text_host;
 CComPtr<ITextServices> g_text_service;
 
 LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
+CComPtr<MyOLEObject> GetOLEObjectAtMouseCursor();
 
 int WINAPI WinMain(HINSTANCE, HINSTANCE, char*, int) {
 
     WNDCLASSEX default_class = { 0 };
     default_class.cbSize = sizeof(default_class);
-    default_class.style = CS_HREDRAW | CS_VREDRAW;
+    default_class.style = CS_HREDRAW | CS_VREDRAW | CS_DBLCLKS;
     default_class.lpfnWndProc = WindowProcedure;
     default_class.cbClsExtra = 0;
     default_class.cbWndExtra = sizeof(LONG_PTR);
@@ -154,26 +156,14 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
     case WM_SETCURSOR: {
         if (LOWORD(lParam) == HTCLIENT) {
 
-            POINT position{};
-            GetCursorPos(&position);
-
-            CComPtr<IRichEditOle> rich_edit_ole;
-            g_text_service->TxSendMessage(EM_GETOLEINTERFACE, 0, (LPARAM)&rich_edit_ole, nullptr);
-
-            CComPtr<ITextDocument> text_document;
-            rich_edit_ole->QueryInterface(IID_ITextDocument, reinterpret_cast<void**>(&text_document));
-
-            CComPtr<ITextRange> text_range;
-            text_document->RangeFromPoint(position.x, position.y, &text_range);
-
-            CComPtr<IUnknown> ole_object;
-            text_range->GetEmbeddedObject(&ole_object);
-
+            auto ole_object = GetOLEObjectAtMouseCursor();
             if (ole_object) {
                 SetCursor(LoadCursor(nullptr, IDC_ARROW));
             }
             else {
 
+                POINT position{};
+                GetCursorPos(&position);
                 ScreenToClient(hwnd, &position);
 
                 HDC hdc = GetDC(hwnd);
@@ -207,6 +197,28 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
         LRESULT result = 0;
         g_text_service->TxSendMessage(message, wParam, lParam, &result);
         return result;
+    }
+
+    case WM_LBUTTONDBLCLK: {
+
+        auto ole_object = GetOLEObjectAtMouseCursor();
+        if (ole_object) {
+
+            std::wostringstream stream;
+            stream 
+                << L"OLE object 0x" 
+                << std::hex << std::uppercase << reinterpret_cast<std::uintptr_t>(ole_object.p)
+                << " is double clicked.";
+
+            MessageBox(hwnd, stream.str().c_str(), L"", MB_OK | MB_ICONINFORMATION);
+            return 0;
+        }
+        else {
+
+            LRESULT result{};
+            g_text_service->TxSendMessage(message, wParam, lParam, &result);
+            return result;
+        }
     }
 
     case WM_DESTROY:
@@ -255,4 +267,36 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
     }
 
     return CallWindowProc(DefWindowProc, hwnd, message, wParam, lParam);
+}
+
+
+
+CComPtr<MyOLEObject> GetOLEObjectAtMouseCursor() {
+
+    POINT position{};
+    GetCursorPos(&position);
+
+    CComPtr<IRichEditOle> rich_edit_ole;
+    g_text_service->TxSendMessage(EM_GETOLEINTERFACE, 0, (LPARAM)&rich_edit_ole, nullptr);
+
+    CComPtr<ITextDocument> text_document;
+    HRESULT hresult = rich_edit_ole->QueryInterface(IID_ITextDocument, reinterpret_cast<void**>(&text_document));
+    if (FAILED(hresult)) {
+        return nullptr;
+    }
+
+    CComPtr<ITextRange> text_range;
+    hresult = text_document->RangeFromPoint(position.x, position.y, &text_range);
+    if (FAILED(hresult)) {
+        return nullptr;
+    }
+
+    CComPtr<IUnknown> ole_object;
+    hresult = text_range->GetEmbeddedObject(&ole_object);
+    if (FAILED(hresult)) {
+        return nullptr;
+    }
+
+    CComPtr<MyOLEObject> my_ole_object(dynamic_cast<MyOLEObject*>(ole_object.p));
+    return my_ole_object;
 }
