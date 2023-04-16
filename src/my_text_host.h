@@ -87,11 +87,14 @@ public:
     }
 
     BOOL TxSetTimer(UINT idTimer, UINT uTimeout) override {
-        return FALSE;
+        //For the latest RichEdit 4.0, it is necessary to implement timers for some functions, 
+        //such as selecting multiple lines by dragging mouse in a multi-line rich edit. 
+        SetTimer(hwnd_, idTimer, uTimeout, nullptr);
+        return TRUE;
     }
 
     void TxKillTimer(UINT idTimer) override {
-
+        KillTimer(hwnd_, idTimer);
     }
 
     void TxScrollWindowEx(INT dx, INT dy, LPCRECT lprcScroll, LPCRECT lprcClip, HRGN hrgnUpdate, LPRECT lprcUpdate, UINT fuScroll) override {
@@ -201,7 +204,7 @@ public:
     }
 
     HRESULT TxGetPropertyBits(DWORD dwMask, DWORD* pdwBits) override {
-        *pdwBits = 0;
+        *pdwBits = dwMask & TXTBIT_MULTILINE;
         return S_OK;
     }
 

@@ -221,6 +221,12 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
         }
     }
 
+    case WM_TIMER: {
+        LRESULT result{};
+        g_text_service->TxSendMessage(message, wParam, lParam, &result);
+        return result;
+    }
+
     case WM_DESTROY:
         //TextService must be released before TextHost, because the reference count of TextHost
         //is not increased when creating TextService.
